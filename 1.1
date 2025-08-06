@@ -1,0 +1,109 @@
+<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tambola Generator & Caller</title>
+  <style>
+    .ticket { display: inline-block; margin: 10px; font-family: monospace; }
+    .ticket div { width: 30px; height: 30px; display: inline-block;
+                  vertical-align: middle; text-align: center; }
+    .called { background: yellow; }
+  </style>
+</head>
+<body>
+  <button id="generate">Generate Ticket</button>
+  <button id="pick">Pick Number</button>
+  <div id="tickets"></div>
+  <div id="current" style="font-size:2em; margin-top:20px;"></div>
+  <div id="history"></div>
+
+<script>
+// Utility: shuffle array
+const shuffle = arr => arr.sort(() => Math.random() - 0.5);
+
+
+function makeTicket() {
+  const colRanges = [
+    [1,10],[11,20],[21,30],[31,40],[41,50],
+    [51,60],[61,70],[71,80],[81,90]
+  ];
+  // first prepare 15 slots: 3 rows ×9 cols filled by boolean grid
+  let grid = Array(3).fill(0).map(_ => Array(9).fill(0));
+  // enforce each row has exactly 5 ones
+  // start by putting 5 ones in each row randomly
+  for (let r = 0; r < 3; r++) {
+    let picks = shuffle([...Array(9).keys()]).slice(0,5);
+    picks.forEach(c => grid[r][c] = 1);
+  }
+
+  for (let c = 0; c < 9; c++) {
+    if (grid.every(r => r[c] === 0)) {
+      let row = Math.floor(Math.random()*3);
+      grid[row][c] = 1;
+      // to keep that row ≤5 ones, remove a random other one:
+      let ones = grid[row].map((v,i)=>v?i:null).filter(i=>i!==null && i!==c);
+      let drop = ones[Math.floor(Math.random()*ones.length)];
+      grid[row][drop] = 0;
+    }
+  }
+  // fill actual numbers: for each column pick needed count from its range
+  const ticket = Array(3).fill(0).map(_ => Array(9).fill(null));
+  for (let c=0; c<9; c++) {
+    const pool = Array.from({length: colRanges[c][1] - colRanges[c][0] +1},
+                            (_,i)=>colRanges[c][0]+i);
+    shuffle(pool);
+    const needed = grid.reduce((sum,r)=>sum + r[c], 0);
+    const picked = pool.slice(0, needed).sort((a,b)=>a-b);
+    let idx = 0;
+    for (let r=0; r<3; r++) {
+      if (grid[r][c]) {
+        ticket[r][c] = picked[idx++];
+      }
+    }
+  }
+  return ticket;
+}
+
+
+function renderTicket(ticket, elt) {
+  const div = document.createElement('div');
+  div.className = 'ticket';
+  ticket.forEach(row => {
+    row.forEach(cell => {
+      const c = document.createElement('div');
+      c.textContent = cell || '';
+      div.append(c);
+    });
+    div.append(document.createElement('br'));
+  });
+  elt.append(div);
+}
+
+
+const allNumbers = shuffle([...Array(90)].map((_,i)=>i+1));
+let history = [];
+
+// Web speech speak
+function speak(num) {
+  const utter = new SpeechSynthesisUtterance(num.toString());
+  window.speechSynthesis.speak(utter);
+}
+
+
+document.getElementById('generate').onclick = () => {
+  document.getElementById('tickets').innerHTML = '';
+  const ticket = makeTicket();
+  renderTicket(ticket, document.getElementById('tickets'));
+};
+
+document.getElementById('pick').onclick = () => {
+  if (allNumbers.length === 0) return alert('All numbers picked');
+  const num = allNumbers.pop();
+  history.push(num);
+  document.getElementById('current').textContent = num;
+  document.getElementById('history').textContent = 'Called: ' + history.join(', ');
+  speak(num);
+};
+</script>
+</body>
+</html>
