@@ -5,15 +5,127 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Tambola</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #fdf6e3; color: #333; }
-    .ticket-container, .number-history { display: flex; flex-wrap: wrap; justify-content: center; margin: 20px auto; }
-    .ticket { border: 2px solid #444; margin: 10px; padding: 10px; background: #fff; animation: fadeIn 0.8s ease; transform: scale(0.95); }
-    .row { display: flex; }
-    .cell { width: 30px; height: 30px; line-height: 30px; border: 1px solid #ccc; margin: 1px; }
-    .highlight { background: yellow; font-weight: bold; }
-    #current-number { font-size: 2em; margin: 20px; transition: transform 0.3s ease; }
-    #current-number.animate { transform: scale(1.4); color: #e63946; }
-    .win { animation: flash 0.8s infinite alternate; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      margin: 0;
+      overflow-x: hidden;
+      background: linear-gradient(to top, #a6e3e9 0%, #e3f6f5 100%);
+      color: #222;
+    }
+    .background-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .bird {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/616/616430.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      animation: flyAcross 12s linear infinite;
+    }
+    .bird:nth-child(2) { top: 100px; animation-delay: 3s; }
+    .bird:nth-child(3) { top: 200px; animation-delay: 6s; }
+
+    @keyframes flyAcross {
+      0% { left: -70px; }
+      100% { left: 100vw; }
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 1rem;
+      margin: 10px;
+      background-color: #ff7f50;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #e36438;
+    }
+    input[type="number"] {
+      padding: 10px;
+      font-size: 1rem;
+      width: 100px;
+      margin: 10px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+    }
+    .ticket-container, .number-history {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .ticket {
+      border: 3px solid #8e44ad;
+      margin: 10px;
+      padding: 10px;
+      background: linear-gradient(to bottom, #fefcea, #f1da36);
+      animation: fadeIn 0.8s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+    }
+    .row {
+      display: flex;
+    }
+    .cell {
+      width: 45px;
+      height: 45px;
+      line-height: 45px;
+      margin: 2px;
+      background-color: #fff;
+      border-radius: 6px;
+      border: 2px solid #ccc;
+      font-weight: bold;
+      font-size: 1.1em;
+      box-shadow: 1px 1px 5px rgba(0,0,0,0.1);
+    }
+    .marked {
+      background-color: #7bed9f !important;
+      color: #2d3436;
+      border-color: #2ecc71;
+      transform: scale(1.1);
+    }
+    .highlight {
+      background: #ffeaa7;
+      font-weight: bold;
+    }
+    #current-number {
+      font-size: 3em;
+      margin: 20px;
+      transition: transform 0.3s ease;
+      background: rgba(255, 255, 255, 0.7);
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    #current-number.animate {
+      transform: scale(1.4);
+      color: #e84393;
+    }
+    .win {
+      animation: flash 0.8s infinite alternate;
+    }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.9); }
@@ -21,23 +133,40 @@
     }
 
     @keyframes flash {
-      from { background-color: gold; }
+      from { background-color: #fab1a0; }
       to { background-color: white; }
     }
   </style>
 </head>
 <body>
+  <div class="background-animation">
+    <div class="bird"></div>
+    <div class="bird"></div>
+    <div class="bird"></div>
+  </div>
+
   <h1>Smart Tambola Generator</h1>
-  <button onclick="generateTickets(6)">Generate 6 Tickets</button>
+  <input type="number" id="ticketCount" min="1" max="20" placeholder="No. of Tickets" />
+  <button onclick="generateUserTickets()">Generate Tickets</button>
   <button onclick="pickNumber()">Pick Number</button>
+
   <div id="current-number"></div>
   <div class="ticket-container" id="tickets"></div>
-  <h3>Called Numbers:</h3>
+  <h3 style="background: rgba(255, 255, 255, 0.8); padding: 5px 15px; border-radius: 8px; display: inline-block;">Called Numbers:</h3>
   <div class="number-history" id="numberHistory"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   <script>
     let calledNumbers = [];
+
+    function generateUserTickets() {
+      const count = parseInt(document.getElementById('ticketCount').value);
+      if (!count || count < 1 || count > 20) {
+        alert('Please enter a valid number between 1 and 20');
+        return;
+      }
+      generateTickets(count);
+    }
 
     function generateTicket() {
       const ticket = Array.from({ length: 3 }, () => Array(9).fill(''));
@@ -73,6 +202,7 @@
           row.forEach(cell => {
             const cellDiv = document.createElement('div');
             cellDiv.className = 'cell';
+            if (cell) cellDiv.setAttribute('data-number', cell);
             cellDiv.innerText = cell || '';
             rowDiv.appendChild(cellDiv);
           });
@@ -87,6 +217,7 @@
       let num;
       do { num = Math.floor(Math.random() * 90) + 1; } while (calledNumbers.includes(num));
       calledNumbers.push(num);
+
       const numberDisplay = document.getElementById('current-number');
       numberDisplay.innerText = num;
       numberDisplay.classList.add('animate');
@@ -99,13 +230,10 @@
       history.appendChild(numDiv);
 
       speakNumber(num);
+      highlightTickets(num);
 
       if (calledNumbers.length === 90) {
-        confetti({
-          particleCount: 200,
-          spread: 100,
-          origin: { y: 0.6 }
-        });
+        confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
         numberDisplay.classList.add('win');
       }
     }
@@ -113,6 +241,11 @@
     function speakNumber(num) {
       const utterance = new SpeechSynthesisUtterance(numToWords(num));
       speechSynthesis.speak(utterance);
+    }
+
+    function highlightTickets(num) {
+      const cells = document.querySelectorAll(`[data-number='${num}']`);
+      cells.forEach(cell => cell.classList.add('marked'));
     }
 
     function numToWords(n) {
